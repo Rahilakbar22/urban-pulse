@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Urban Pulse — Interactive City Growth Dashboard</title>
+<meta name="description" content="An interactive dashboard exploring how a fictional city, Meridian Bay, grows district by district — population, walkability, and green space." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --surface-2:      #f9f9f7;
+    --surface-card:   #ffffff;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --success:        #006300;
+
+    --series-residential: #2a78d6; /* blue */
+    --series-commercial:  #eb6834; /* orange */
+    --series-park:        #1baf7a; /* aqua */
+    --series-transit:     #eda100; /* yellow */
+    --series-mixed:       #e87ba4; /* magenta */
+
+    --shadow: 0 1px 2px rgba(11,11,11,0.04), 0 8px 24px rgba(11,11,11,0.06);
+  }
+
+  :root:not([data-theme="light"]) {
+    @media (prefers-color-scheme: dark) {
+      color-scheme: dark;
+      --surface-1:      #0d0d0d;
+      --surface-2:      #0d0d0d;
+      --surface-card:   #1a1a19;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --success:        #0ca30c;
+
+      --series-residential: #3987e5;
+      --series-commercial:  #d95926;
+      --series-park:        #199e70;
+      --series-transit:     #c98500;
+      --series-mixed:       #d55181;
+
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.4);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --surface-1:      #0d0d0d;
+    --surface-2:      #0d0d0d;
+    --surface-card:   #1a1a19;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --success:        #0ca30c;
+
+    --series-residential: #3987e5;
+    --series-commercial:  #d95926;
+    --series-park:        #199e70;
+    --series-transit:     #c98500;
+    --series-mixed:       #d55181;
+
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.4);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--surface-2);
+    color: var(--text-primary);
+    font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    padding-block: env(safe-area-inset-top, 0px) env(safe-area-inset-bottom, 0px);
+    transition: background .2s ease, color .2s ease;
+  }
+
+  a { color: inherit; }
+
+  .wrap {
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 0 20px 80px;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 22px 20px;
+    max-width: 1120px;
+    margin: 0 auto;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+  }
+  .brand-mark {
+    width: 26px; height: 26px;
+    border-radius: 7px;
+    background: linear-gradient(135deg, var(--series-residential), var(--series-park));
+    flex-shrink: 0;
+  }
+  .theme-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface-card);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 13px;
+  }
+  .theme-toggle .seg {
+    padding: 6px 12px;
+    border-radius: 999px;
+    line-height: 1;
+  }
+  .theme-toggle .seg[aria-pressed="true"] {
+    background: var(--surface-2);
+    color: var(--text-primary);
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+
+  /* ---------- Hero ---------- */
+  .hero {
+    padding: 28px 0 40px;
+  }
+  .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--series-residential);
+    margin-bottom: 14px;
+  }
+  .eyebrow::before {
+    content: "";
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--series-residential);
+  }
+  h1 {
+    font-size: clamp(28px, 4.6vw, 44px);
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    margin: 0 0 14px;
+    font-weight: 800;
+    max-width: 18ch;
+  }
+  .lede {
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--text-secondary);
+    max-width: 56ch;
+    margin: 0;
+  }
+
+  /* ---------- Stat tiles ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin: 32px 0;
+  }
+  .stat-tile {
+    background: var(--surface-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    box-shadow: var(--shadow);
+  }
+  .stat-label {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-bottom: 8px;
+  }
+  .stat-value {
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    font-variant-numeric: proportional-nums;
+  }
+  .stat-sub {
+    font-size: 12.5px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* ---------- Card shell ---------- */
+  .card {
+    background: var(--surface-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 22px;
+    margin-bottom: 20px;
+  }
+  .card-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .card-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ---------- Chart ---------- */
+  .chart-wrap { position: relative; }
+  svg.chart { width: 100%; height: auto; display: block; overflow: visible; }
+  .grid-line { stroke: var(--gridline); stroke-width: 1; }
+  .axis-label { fill: var(--text-muted); font-size: 11px; font-family: inherit; }
+  .area-fill { fill: url(#areaGradient); }
+  .line-path { fill: none; stroke: var(--series-residential); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .hover-dot { fill: var(--surface-card); stroke: var(--series-residential); stroke-width: 2; opacity: 0; }
+  .hover-line { stroke: var(--baseline); stroke-width: 1; stroke-dasharray: 3 3; opacity: 0; }
+
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--text-primary);
+    color: var(--surface-1);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 8px;
+    transform: translate(-50%, -130%);
+    opacity: 0;
+    transition: opacity .1s ease;
+    white-space: nowrap;
+    z-index: 5;
+  }
+  .tooltip .sub { font-weight: 500; opacity: 0.75; display: block; font-size: 11px; margin-top: 1px; }
+
+  /* ---------- Filters / legend ---------- */
+  .filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 7px 13px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface-2);
+    color: var(--text-secondary);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--dot, var(--text-muted)); }
+  .pill[aria-pressed="true"] {
+    background: var(--text-primary);
+    color: var(--surface-1);
+    border-color: var(--text-primary);
+  }
+  .pill[aria-pressed="true"] .dot { background: var(--dot, var(--surface-1)); }
+
+  /* ---------- District grid + detail ---------- */
+  .district-layout {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 22px;
+    align-items: start;
+  }
+  .grid-map {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+  }
+  .block {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--block-color);
+    opacity: 1;
+    cursor: pointer;
+    position: relative;
+    transition: opacity .15s ease, transform .1s ease;
+    display: flex;
+    align-items: flex-end;
+    padding: 6px;
+  }
+  .block:hover { transform: translateY(-1px); }
+  .block.dimmed { opacity: 0.16; }
+  .block.selected { outline: 2px solid var(--text-primary); outline-offset: 2px; }
+  .block-label {
+    font-size: 9.5px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.92);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+    line-height: 1.1;
+  }
+
+  .detail-panel {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 18px;
+    min-height: 220px;
+  }
+  .detail-empty {
+    color: var(--text-muted);
+    font-size: 13.5px;
+    line-height: 1.6;
+  }
+  .detail-type {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--detail-color, var(--text-muted));
+    margin-bottom: 8px;
+  }
+  .detail-type .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .detail-name { font-size: 19px; font-weight: 800; letter-spacing: -0.01em; margin-bottom: 14px; }
+  .detail-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  .detail-metric-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 3px; }
+  .detail-metric-value { font-size: 18px; font-weight: 700; }
+  .detail-fact {
+    font-size: 13px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary); }
+  .legend-item .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  footer {
+    margin-top: 40px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    font-size: 12.5px;
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  footer a { text-decoration: underline; text-underline-offset: 2px; }
+
+  @media (max-width: 760px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .district-layout { grid-template-columns: 1fr; }
+    .detail-panel { min-height: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="brand"><span class="brand-mark" aria-hidden="true"></span> Urban Pulse</div>
+  <div class="theme-toggle" role="group" aria-label="Theme">
+    <button class="seg" id="theme-light" aria-pressed="true" onclick="setTheme('light')">Light</button>
+    <button class="seg" id="theme-dark" aria-pressed="false" onclick="setTheme('dark')">Dark</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">Meridian Bay · District explorer</div>
+    <h1>How a city actually grows, block by block.</h1>
+    <p class="lede">Meridian Bay is a fictional city used here to explore how population, walkability and green space shift across 24 districts. Click a block on the map, filter by district type, or hover the growth chart to see a decade of change.</p>
+  </section>
+
+  <section class="stats" id="stats" aria-label="City summary">
+    <div class="stat-tile">
+      <div class="stat-label">Population</div>
+      <div class="stat-value" id="stat-population">—</div>
+      <div class="stat-sub" id="stat-population-sub">across 24 districts</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-label">Avg. walkability</div>
+      <div class="stat-value" id="stat-walk">—</div>
+      <div class="stat-sub">out of 100</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-label">Green coverage</div>
+      <div class="stat-value" id="stat-green">—</div>
+      <div class="stat-sub">of city area</div>
+    </div>
+    <div class="stat-tile">
+      <div class="stat-label">10-yr growth</div>
+      <div class="stat-value" id="stat-growth">—</div>
+      <div class="stat-sub">since 2016</div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">Population growth, 2016–2026</div>
+        <div class="card-desc">Hover the chart to inspect any year.</div>
+      </div>
+    </div>
+    <div class="chart-wrap" id="chart-wrap">
+      <svg class="chart" id="chart" viewBox="0 0 880 260" preserveAspectRatio="none" role="img" aria-label="Line chart of Meridian Bay population from 2016 to 2026, rising from about 181,000 to about 254,000 residents.">
+        <defs>
+          <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--series-residential)" stop-opacity="0.22"/>
+            <stop offset="100%" stop-color="var(--series-residential)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <g id="gridlines"></g>
+        <path id="area-path" class="area-fill"></path>
+        <path id="line-path" class="line-path"></path>
+        <g id="x-labels"></g>
+        <line id="hover-line" class="hover-line" x1="0" y1="0" x2="0" y2="220"></line>
+        <circle id="hover-dot" class="hover-dot" r="5"></circle>
+        <rect id="chart-hit" x="0" y="0" width="880" height="220" fill="transparent"></rect>
+      </svg>
+      <div class="tooltip" id="tooltip">
+        <span id="tooltip-value">—</span>
+        <span class="sub" id="tooltip-year">—</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <div>
+        <div class="card-title">District map</div>
+        <div class="card-desc">24 blocks · click one for details, or filter by type.</div>
+      </div>
+    </div>
+
+    <div class="filters" id="filters" role="group" aria-label="Filter districts by type"></div>
+
+    <div class="district-layout">
+      <div class="grid-map" id="grid-map"></div>
+      <div class="detail-panel" id="detail-panel">
+        <div class="detail-empty">Select a district on the map to see its population, walkability score, green coverage — and a quick fact about that kind of urban space.</div>
+      </div>
+    </div>
+
+    <div class="legend" id="legend"></div>
+  </section>
+
+  <footer>
+    <span>Built with plain HTML, CSS &amp; JavaScript — no frameworks, no build step.</span>
+    <span>Meridian Bay is a fictional city; all figures are illustrative.</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------------- Theme ---------------- */
+  function setTheme(mode) {
+    document.documentElement.setAttribute('data-theme', mode);
+    document.getElementById('theme-light').setAttribute('aria-pressed', String(mode === 'light'));
+    document.getElementById('theme-dark').setAttribute('aria-pressed', String(mode === 'dark'));
+    try { localStorage.setItem('urban-pulse-theme', mode); } catch (e) {}
+  }
+  window.setTheme = setTheme;
+  (function initTheme() {
+    var saved = null;
+    try { saved = localStorage.getItem('urban-pulse-theme'); } catch (e) {}
+    if (saved === 'light' || saved === 'dark') setTheme(saved);
+  })();
+
+  /* ---------------- Data ---------------- */
+  var TYPES = {
+    residential: { label: 'Residential', color: 'var(--series-residential)', fact: 'Residential blocks house the most people per acre here, but walkability climbs fastest when homes sit within a few minutes of daily errands.' },
+    commercial:  { label: 'Commercial',  color: 'var(--series-commercial)',  fact: 'Commercial districts generate the most foot traffic during the day — mixing in housing nearby keeps streets active after 6pm too.' },
+    park:        { label: 'Park & green',color: 'var(--series-park)',       fact: 'A resident within a 10-minute walk of a park is far more likely to walk for daily trips — green blocks quietly boost the whole city’s walkability.' },
+    transit:     { label: 'Transit hub', color: 'var(--series-transit)',    fact: 'Transit hubs anchor density: blocks within a few minutes of one can support more housing without more traffic.' },
+    mixed:       { label: 'Mixed-use',   color: 'var(--series-mixed)',      fact: 'Mixed-use blocks blend homes, shops and offices — they tend to score highest on walkability of any district type.' }
+  };
+
+  var TYPE_SEQUENCE = ['residential','residential','commercial','residential','park','residential',
+                        'commercial','residential','residential','transit','residential','mixed',
+                        'park','commercial','residential','residential','mixed','residential',
+                        'residential','park','commercial','transit','residential','residential'];
+
+  var DISTRICT_NAMES = [
+    'North Bank', 'South Commons', 'East Green', 'West Junction', 'Old Mill', 'Upper Terrace',
+    'Lower Green', 'Central Row', 'Harbor Point', 'Cedar Heights', 'River Bend', 'Market Square',
+    'Foundry Yard', 'Willow Field', 'Station Row', 'Highgate', 'Riverside Commons', 'The Wharf',
+    'Elm Quarter', 'Northgate', 'Cannery Row', 'Birchwood', 'Union Square', 'Millbrook'
+  ];
+
+  function seededRandom(seed) {
+    var s = seed % 2147483647;
+    if (s <= 0) s += 2147483646;
+    return function () {
+      s = (s * 16807) % 2147483647;
+      return (s - 1) / 2147483646;
+    };
+  }
+  var rand = seededRandom(4242);
+
+  var districts = TYPE_SEQUENCE.map(function (type, i) {
+    var base = { residential: 9200, commercial: 3400, park: 900, transit: 2600, mixed: 5200 }[type];
+    var pop = Math.round(base * (0.7 + rand() * 0.6));
+    var walkBase = { residential: 58, commercial: 66, park: 74, transit: 80, mixed: 84 }[type];
+    var walk = Math.round(Math.min(98, Math.max(28, walkBase + (rand() * 20 - 10))));
+    var greenBase = { residential: 14, commercial: 8, park: 62, transit: 10, mixed: 18 }[type];
+    var green = Math.round(Math.min(80, Math.max(3, greenBase + (rand() * 12 - 6))));
+    return {
+      id: i,
+      row: Math.floor(i / 6),
+      col: i % 6,
+      type: type,
+      name: DISTRICT_NAMES[i],
+      pop: pop,
+      walk: walk,
+      green: green
+    };
+  });
+
+  var POP_SERIES = [
+    { year: 2016, value: 181400 },
+    { year: 2017, value: 187900 },
+    { year: 2018, value: 193200 },
+    { year: 2019, value: 199800 },
+    { year: 2020, value: 201100 },
+    { year: 2021, value: 206700 },
+    { year: 2022, value: 216300 },
+    { year: 2023, value: 227500 },
+    { year: 2024, value: 236900 },
+    { year: 2025, value: 246100 },
+    { year: 2026, value: 254300 }
+  ];
+
+  /* ---------------- Stats ---------------- */
+  function fmt(n) { return n.toLocaleString('en-US'); }
+
+  function renderStats() {
+    var totalPop = districts.reduce(function (a, d) { return a + d.pop; }, 0);
+    var avgWalk = Math.round(districts.reduce(function (a, d) { return a + d.walk; }, 0) / districts.length);
+    var avgGreen = Math.round(districts.reduce(function (a, d) { return a + d.green; }, 0) / districts.length);
+    var growth = Math.round(((POP_SERIES[POP_SERIES.length - 1].value / POP_SERIES[0].value) - 1) * 100);
+
+    document.getElementById('stat-population').textContent = fmt(totalPop);
+    document.getElementById('stat-walk').textContent = avgWalk;
+    document.getElementById('stat-green').textContent = avgGreen + '%';
+    document.getElementById('stat-growth').textContent = '+' + growth + '%';
+  }
+
+  /* ---------------- Chart ---------------- */
+  var CHART_W = 880, CHART_H = 220, PAD_L = 6, PAD_R = 6;
+
+  function renderChart() {
+    var values = POP_SERIES.map(function (d) { return d.value; });
+    var min = Math.min.apply(null, values);
+    var max = Math.max.apply(null, values);
+    var range = max - min || 1;
+    var yPad = range * 0.15;
+    var yMin = min - yPad, yMax = max + yPad;
+
+    var n = POP_SERIES.length;
+    var stepX = (CHART_W - PAD_L - PAD_R) / (n - 1);
+
+    function xFor(i) { return PAD_L + i * stepX; }
+    function yFor(v) { return CHART_H - ((v - yMin) / (yMax - yMin)) * CHART_H; }
+
+    var points = POP_SERIES.map(function (d, i) { return [xFor(i), yFor(d.value)]; });
+
+    var linePath = points.map(function (p, i) { return (i === 0 ? 'M' : 'L') + p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join(' ');
+    var areaPath = linePath + ' L' + points[points.length - 1][0].toFixed(1) + ',' + CHART_H + ' L' + points[0][0].toFixed(1) + ',' + CHART_H + ' Z';
+
+    document.getElementById('line-path').setAttribute('d', linePath);
+    document.getElementById('area-path').setAttribute('d', areaPath);
+
+    var gridG = document.getElementById('gridlines');
+    gridG.innerHTML = '';
+    var rows = 4;
+    for (var r = 0; r <= rows; r++) {
+      var y = (CHART_H / rows) * r;
+      var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      line.setAttribute('x1', 0); line.setAttribute('x2', CHART_W);
+      line.setAttribute('y1', y); line.setAttribute('y2', y);
+      line.setAttribute('class', 'grid-line');
+      gridG.appendChild(line);
+    }
+
+    var xLabelsG = document.getElementById('x-labels');
+    xLabelsG.innerHTML = '';
+    POP_SERIES.forEach(function (d, i) {
+      if (i % 2 !== 0 && i !== n - 1) return;
+      var t = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      t.setAttribute('x', xFor(i));
+      t.setAttribute('y', CHART_H + 20);
+      t.setAttribute('text-anchor', i === n - 1 ? 'end' : (i === 0 ? 'start' : 'middle'));
+      t.setAttribute('class', 'axis-label');
+      t.textContent = d.year;
+      xLabelsG.appendChild(t);
+    });
+
+    var svg = document.getElementById('chart');
+    var hoverLine = document.getElementById('hover-line');
+    var hoverDot = document.getElementById('hover-dot');
+    var tooltip = document.getElementById('tooltip');
+    var tooltipValue = document.getElementById('tooltip-value');
+    var tooltipYear = document.getElementById('tooltip-year');
+    var hitRect = document.getElementById('chart-hit');
+    hoverLine.setAttribute('y2', CHART_H);
+
+    function showAt(i) {
+      var p = points[i];
+      hoverLine.setAttribute('x1', p[0]); hoverLine.setAttribute('x2', p[0]);
+      hoverLine.style.opacity = 1;
+      hoverDot.setAttribute('cx', p[0]); hoverDot.setAttribute('cy', p[1]);
+      hoverDot.style.opacity = 1;
+
+      var pct = p[0] / CHART_W * 100;
+      tooltip.style.left = pct + '%';
+      tooltip.style.top = (p[1] / CHART_H * 100) + '%';
+      tooltip.style.opacity = 1;
+      tooltipValue.textContent = fmt(POP_SERIES[i].value) + ' residents';
+      tooltipYear.textContent = POP_SERIES[i].year;
+    }
+    function hide() {
+      hoverLine.style.opacity = 0;
+      hoverDot.style.opacity = 0;
+      tooltip.style.opacity = 0;
+    }
+
+    function handleMove(evt) {
+      var rect = svg.getBoundingClientRect();
+      var clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+      var x = (clientX - rect.left) / rect.width * CHART_W;
+      var i = Math.round((x - PAD_L) / stepX);
+      i = Math.max(0, Math.min(n - 1, i));
+      showAt(i);
+    }
+
+    hitRect.addEventListener('mousemove', handleMove);
+    hitRect.addEventListener('mouseleave', hide);
+    hitRect.addEventListener('touchstart', handleMove, { passive: true });
+    hitRect.addEventListener('touchmove', handleMove, { passive: true });
+    hitRect.addEventListener('touchend', hide);
+  }
+
+  /* ---------------- Filters + legend ---------------- */
+  var activeFilter = 'all';
+
+  function renderFilters() {
+    var el = document.getElementById('filters');
+    el.innerHTML = '';
+    var all = document.createElement('button');
+    all.className = 'pill';
+    all.setAttribute('aria-pressed', 'true');
+    all.textContent = 'All districts';
+    all.addEventListener('click', function () { setFilter('all'); });
+    el.appendChild(all);
+
+    Object.keys(TYPES).forEach(function (key) {
+      var t = TYPES[key];
+      var btn = document.createElement('button');
+      btn.className = 'pill';
+      btn.style.setProperty('--dot', t.color);
+      btn.setAttribute('aria-pressed', 'false');
+      btn.innerHTML = '<span class="dot"></span>' + t.label;
+      btn.addEventListener('click', function () { setFilter(key); });
+      el.appendChild(btn);
+    });
+  }
+
+  function setFilter(key) {
+    activeFilter = key;
+    var pills = document.querySelectorAll('#filters .pill');
+    pills.forEach(function (p, i) {
+      var isAll = i === 0;
+      var match = isAll ? key === 'all' : Object.keys(TYPES)[i - 1] === key;
+      p.setAttribute('aria-pressed', String(match));
+    });
+    renderGrid();
+  }
+
+  function renderLegend() {
+    var el = document.getElementById('legend');
+    el.innerHTML = '';
+    Object.keys(TYPES).forEach(function (key) {
+      var t = TYPES[key];
+      var item = document.createElement('div');
+      item.className = 'legend-item';
+      item.innerHTML = '<span class="dot" style="background:' + t.color + '"></span>' + t.label;
+      el.appendChild(item);
+    });
+  }
+
+  /* ---------------- Grid map + detail ---------------- */
+  var selectedId = null;
+
+  function renderGrid() {
+    var el = document.getElementById('grid-map');
+    el.innerHTML = '';
+    districts.forEach(function (d) {
+      var b = document.createElement('div');
+      b.className = 'block';
+      b.style.setProperty('--block-color', TYPES[d.type].color);
+      b.setAttribute('role', 'button');
+      b.setAttribute('tabindex', '0');
+      b.setAttribute('aria-label', d.name + ', ' + TYPES[d.type].label);
+      if (activeFilter !== 'all' && d.type !== activeFilter) b.classList.add('dimmed');
+      if (d.id === selectedId) b.classList.add('selected');
+
+      var label = document.createElement('span');
+      label.className = 'block-label';
+      label.textContent = d.name;
+      b.appendChild(label);
+
+      b.addEventListener('click', function () { selectDistrict(d.id); });
+      b.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectDistrict(d.id); }
+      });
+
+      el.appendChild(b);
+    });
+  }
+
+  function selectDistrict(id) {
+    selectedId = id;
+    renderGrid();
+    var d = districts.filter(function (x) { return x.id === id; })[0];
+    var t = TYPES[d.type];
+    var panel = document.getElementById('detail-panel');
+    panel.innerHTML =
+      '<div class="detail-type" style="--detail-color:' + t.color + '"><span class="dot"></span>' + t.label + '</div>' +
+      '<div class="detail-name">' + d.name + '</div>' +
+      '<div class="detail-metrics">' +
+        '<div><div class="detail-metric-label">Population</div><div class="detail-metric-value">' + fmt(d.pop) + '</div></div>' +
+        '<div><div class="detail-metric-label">Walkability</div><div class="detail-metric-value">' + d.walk + ' / 100</div></div>' +
+        '<div><div class="detail-metric-label">Green coverage</div><div class="detail-metric-value">' + d.green + '%</div></div>' +
+        '<div><div class="detail-metric-label">Grid position</div><div class="detail-metric-value">R' + (d.row + 1) + ' · C' + (d.col + 1) + '</div></div>' +
+      '</div>' +
+      '<div class="detail-fact">' + t.fact + '</div>';
+  }
+
+  /* ---------------- Init ---------------- */
+  renderStats();
+  renderChart();
+  renderFilters();
+  renderLegend();
+  renderGrid();
+})();
+</script>
+</body>
+</html>
