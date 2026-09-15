@@ -2,8 +2,7 @@
 
 An interactive dashboard exploring how a fictional city — **Meridian Bay** — grows district by district. Built as a single self-contained page: vanilla HTML, CSS and JavaScript, no frameworks, no build step.
 
-**Live demo** — enable GitHub Pages on this repo (Settings → Pages → Deploy from branch `main` / `root`) and the link goes here.
-
+**[Live demo](https://rahilakbar22.github.io/urban-pulse/)** — hosted on GitHub Pages.
 ## What it does
 
 - **Population growth chart** — an SVG line/area chart of Meridian Bay's population from 2016–2026, with a hover crosshair and tooltip on every year.
